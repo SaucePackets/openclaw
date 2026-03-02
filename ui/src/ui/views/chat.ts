@@ -529,6 +529,14 @@ function groupMessages(items: ChatItem[]): Array<ChatItem | MessageGroup> {
 
 function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
   const items: ChatItem[] = [];
+
+  const keyCounts = new Map<string, number>();
+  const dedupeKey = (base: string): string => {
+    const next = (keyCounts.get(base) ?? 0) + 1;
+    keyCounts.set(base, next);
+    return next === 1 ? base : `${base}#${next}`;
+  };
+
   const history = Array.isArray(props.messages) ? props.messages : [];
   const tools = Array.isArray(props.toolMessages) ? props.toolMessages : [];
   const historyStart = Math.max(0, history.length - CHAT_HISTORY_RENDER_LIMIT);
@@ -567,7 +575,7 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
 
     items.push({
       kind: "message",
-      key: messageKey(msg),
+      key: dedupeKey(messageKey(msg)),
       message: msg,
     });
   }
@@ -575,7 +583,7 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
     for (let i = 0; i < tools.length; i++) {
       items.push({
         kind: "message",
-        key: messageKey(tools[i]),
+        key: dedupeKey(messageKey(tools[i])),
         message: tools[i],
       });
     }
