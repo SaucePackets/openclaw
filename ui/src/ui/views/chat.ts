@@ -620,10 +620,16 @@ function messageKey(message: unknown): string {
   const timestamp = typeof m.timestamp === "number" ? m.timestamp : 0;
 
   let sig = "";
-  try {
-    sig = JSON.stringify(m).slice(0, 160);
-  } catch {
-    sig = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
+  const content = m.content;
+
+  if (typeof content === "string") {
+    sig = content;
+  } else {
+    try {
+      sig = JSON.stringify(content ?? "");
+    } catch {
+      sig = Object.prototype.toString.call(content);
+    }
   }
 
   return `msg:${role}:${timestamp}:${sig.slice(0, 160)}`;
