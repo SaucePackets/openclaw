@@ -606,6 +606,42 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
   return groupMessages(items);
 }
 
+function contentSignature(content: unknown): string {
+  if (typeof content === "string") {
+    return content.slice(0, 160);
+  }
+
+  if (Array.isArray(content)) {
+    const first = content[0];
+    if (first && typeof first === "object") {
+      const b = first as Record<string, unknown>;
+      const type = typeof b.type === "string" ? b.type : "unknown";
+      const text = typeof b.text === "string" ? b.text.slice(0, 80) : "";
+      const imageType =
+        b.type === "image" &&
+        typeof (b.source as Record<string, unknown> | undefined)?.media_type === "string"
+          ? ((b.source as Record<string, unknown>).media_type as string)
+          : "";
+      return `arr:${content.length}:${type}:${imageType}:${text}`;
+    }
+    return `arr:${content.length}:${typeof first}`;
+  }
+
+  if (content && typeof content === "object") {
+    const c = content as Record<string, unknown>;
+    const keys = Object.keys(c).slice(0, 6).join(",");
+    return `obj:${keys}`;
+  }
+
+  if (typeof content === "number" || typeof content === "boolean" || typeof content === "bigint") {
+    return String(content).slice(0, 160);
+  }
+  if (typeof content === "symbol") {
+    return content.description ? `symbol:${content.description}`.slice(0, 160) : "symbol";
+  }
+  return "";
+}
+
 function messageKey(message: unknown): string {
   const m = message as Record<string, unknown>;
 
@@ -626,19 +662,7 @@ function messageKey(message: unknown): string {
 
   const role = typeof m.role === "string" ? m.role : "unknown";
   const timestamp = typeof m.timestamp === "number" ? m.timestamp : 0;
+  const sig = contentSignature(m.content);
 
-  let sig = "";
-  const content = m.content;
-
-  if (typeof content === "string") {
-    sig = content;
-  } else {
-    try {
-      sig = JSON.stringify(content ?? "");
-    } catch {
-      sig = Object.prototype.toString.call(content);
-    }
-  }
-
-  return `msg:${role}:${timestamp}:${sig.slice(0, 160)}`;
+  return `msg:${role}:${timestamp}:${sig}`;
 }
