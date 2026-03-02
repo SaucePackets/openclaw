@@ -98,7 +98,11 @@ function renderCompactionIndicator(status: CompactionIndicatorStatus | null | un
   // Show "compacting..." while active
   if (status.active) {
     return html`
-      <div class="compaction-indicator compaction-indicator--active" role="status" aria-live="polite">
+      <div
+        class="compaction-indicator compaction-indicator--active"
+        role="status"
+        aria-live="polite"
+      >
         ${icons.loader} Compacting context...
       </div>
     `;
@@ -109,7 +113,11 @@ function renderCompactionIndicator(status: CompactionIndicatorStatus | null | un
     const elapsed = Date.now() - status.completedAt;
     if (elapsed < COMPACTION_TOAST_DURATION_MS) {
       return html`
-        <div class="compaction-indicator compaction-indicator--complete" role="status" aria-live="polite">
+        <div
+          class="compaction-indicator compaction-indicator--complete"
+          role="status"
+          aria-live="polite"
+        >
           ${icons.check} Context compacted
         </div>
       `;
@@ -147,12 +155,7 @@ function renderFallbackIndicator(status: FallbackIndicatorStatus | null | undefi
       : "compaction-indicator compaction-indicator--fallback";
   const icon = phase === "cleared" ? icons.check : icons.brain;
   return html`
-    <div
-      class=${className}
-      role="status"
-      aria-live="polite"
-      title=${details}
-    >
+    <div class=${className} role="status" aria-live="polite" title=${details}>
       ${icon} ${message}
     </div>
   `;
@@ -278,7 +281,11 @@ export function renderChat(props: ChatProps) {
         (item) => {
           if (item.kind === "divider") {
             return html`
-              <div class="chat-divider" role="separator" data-ts=${String(item.timestamp)}>
+              <div
+                class="chat-divider"
+                role="separator"
+                data-ts=${item.timestamp != null ? `${item.timestamp}` : ""}
+              >
                 <span class="chat-divider__line"></span>
                 <span class="chat-divider__label">${item.label}</span>
                 <span class="chat-divider__line"></span>
@@ -317,9 +324,7 @@ export function renderChat(props: ChatProps) {
   return html`
     <section class="card chat">
       ${props.disabledReason ? html`<div class="callout">${props.disabledReason}</div>` : nothing}
-
       ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
-
       ${
         props.focusMode
           ? html`
@@ -375,7 +380,9 @@ export function renderChat(props: ChatProps) {
         props.queue.length
           ? html`
             <div class="chat-queue" role="status" aria-live="polite">
-              <div class="chat-queue__title">Queued (${props.queue.length})</div>
+              <div class="chat-queue__title">
+                Queued (${props.queue.length})
+              </div>
               <div class="chat-queue__list">
                 ${props.queue.map(
                   (item) => html`
@@ -402,10 +409,8 @@ export function renderChat(props: ChatProps) {
           `
           : nothing
       }
-
       ${renderFallbackIndicator(props.fallbackStatus)}
       ${renderCompactionIndicator(props.compactionStatus)}
-
       ${
         props.showNewMessages
           ? html`
@@ -562,7 +567,7 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
 
     items.push({
       kind: "message",
-      key: messageKey(msg, i),
+      key: messageKey(msg),
       message: msg,
     });
   }
@@ -570,7 +575,7 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
     for (let i = 0; i < tools.length; i++) {
       items.push({
         kind: "message",
-        key: messageKey(tools[i], i + history.length),
+        key: messageKey(tools[i]),
         message: tools[i],
       });
     }
@@ -593,24 +598,33 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
   return groupMessages(items);
 }
 
-function messageKey(message: unknown, index: number): string {
+function messageKey(message: unknown): string {
   const m = message as Record<string, unknown>;
+
   const toolCallId = typeof m.toolCallId === "string" ? m.toolCallId : "";
   if (toolCallId) {
     return `tool:${toolCallId}`;
   }
+
   const id = typeof m.id === "string" ? m.id : "";
   if (id) {
     return `msg:${id}`;
   }
+
   const messageId = typeof m.messageId === "string" ? m.messageId : "";
   if (messageId) {
     return `msg:${messageId}`;
   }
-  const timestamp = typeof m.timestamp === "number" ? m.timestamp : null;
+
   const role = typeof m.role === "string" ? m.role : "unknown";
-  if (timestamp != null) {
-    return `msg:${role}:${timestamp}:${index}`;
+  const timestamp = typeof m.timestamp === "number" ? m.timestamp : 0;
+
+  let sig = "";
+  try {
+    sig = JSON.stringify(m).slice(0, 160);
+  } catch {
+    sig = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
   }
-  return `msg:${role}:${index}`;
+
+  return `msg:${role}:${timestamp}:${sig.slice(0, 160)}`;
 }
